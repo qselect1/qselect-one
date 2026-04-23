@@ -426,65 +426,6 @@ function loginAs(portal) {
   currentPortal = portal;
   buildNav(portal);
   navigateTo(portal==='company' ? 'co-dashboard' : 'inv-dashboard');
-  // Background: try to refresh DB from live Drive sheets (silent, no error shown)
-  tryLiveRefresh(portal);
-}
-
-function tryLiveRefresh(portal) {
-  const IDS = {
-    investors: '1KDTm_PlBsoyJIpoIfoBm1NIet03RlG-p',
-    companies: '1jJ-p-4oDN2UdwcceCjcdxhZfZm7FTM5P',
-    grants:    '1Z8nRUZb7WPw8upmbsj7lMRMpYdavg-n1'
-  };
-
-  function sheetUrl(id) {
-    return 'https://docs.google.com/spreadsheets/d/' + id + '/gviz/tq?tqx=out:json';
-  }
-
-  function parseSheet(text) {
-    try {
-      const json = text.substring(text.indexOf('{'), text.lastIndexOf(')'));
-      const data = JSON.parse(json);
-      const cols = data.table.cols.map(c => c.label);
-      return data.table.rows.map(row => {
-        const obj = {};
-        row.c.forEach((cell, i) => { obj[cols[i]] = cell ? (cell.v !== null ? cell.v : '') : ''; });
-        return obj;
-      });
-    } catch(e) { return null; }
-  }
-
-  function mapInv(r, i) {
-    return { id:i+1, name:r['Fund Name']||'', type:r['Fund Type']||'', fundSize:r['Fund Size (€M)']?'€'+r['Fund Size (€M)']+'M':'', ticketMin:parseFloat(r['Min Ticket (€M)'])||0, ticketMax:parseFloat(r['Max Ticket (€M)'])||0, ticketRange:r['Ticket Range (Display)']||'', location:r['Headquarters']||'', sector:(r['Sector Focus (Primary)']||'').split(',').map(s=>s.trim()), stage:(r['Investment Stage']||'').split('/').map(s=>s.trim()), geography:r['Geography Focus']||'', score:parseInt(r['Match Score (0–100)'])||80, description:r['Mandate Summary']||'', recentInvestments:(r['Recent Investments']||'').split(',').map(s=>s.trim()), mandate:r['Mandate Summary']||'' };
-  }
-  function mapCo(r, i) {
-    const rev = parseFloat(String(r['Revenue (€)']).replace(/[^0-9.]/g,''))||0;
-    const revFmt = rev>=1000000?'€'+(rev/1000000).toFixed(1)+'M':rev>=1000?'€'+(rev/1000).toFixed(0)+'k':'€'+rev;
-    return { id:i+1, name:r['Company Name']||'', sector:r['Sector']||'', stage:r['Stage']||'', location:r['Country']||'', revenue:revFmt, raise:r['Target Raise (€M)']?'€'+r['Target Raise (€M)']+'M':'', raiseAmt:parseFloat(r['Target Raise (€M)'])||0, score:parseInt(r['Investor Match Score'])||80, growth:r['Revenue Growth (YoY %)']?'+'+r['Revenue Growth (YoY %)']:'', ebitda:r['EBITDA (%)']||'', grossMargin:r['Gross Margin (%)']||'', runway:r['Cash Runway (months)']?r['Cash Runway (months)']+' months':'', employees:parseInt(r['Employees'])||0, countries:parseInt(r['Countries Operating'])||0, capitalRaised:r['Capital Raised to Date (€M)']?'€'+r['Capital Raised to Date (€M)']+'M':'', description:r['Impact Narrative']||'', highlights:(r['Use of Funds']||'').split(',').map(s=>s.trim()).slice(0,4), clients:(r['Key Clients']||'').split(',').map(s=>s.trim()), certifications:(r['Certifications']||'').split(',').map(s=>s.trim()), team:[{name:r['Founder / CEO']||'',role:'CEO',bio:''},{name:r['Co-Founder']||'',role:'Co-Founder',bio:''}].filter(t=>t.name), shareholders:[{name:'Founders',type:'Founder',pct:'48%'},{name:'Investors',type:'VC',pct:'42%'},{name:'ESOP',type:'Employee',pct:'10%'}], financials:{y1:revFmt,y2:'—',y3:'—'} };
-  }
-  function mapGr(r, i) {
-    return { id:i+1, name:r['Grant Name']||'', body:r['Funding Body']||'', amountMin:parseFloat(r['Min Award'])||0, amountMax:parseFloat(r['Max Award'])||0, amountRange:r['Award Range (Display)']||'', geography:r['Geography Focus']||'', sector:r['Sector Focus']||'', deadline:r['Deadline']||'', eligibility:(r['Eligibility – Entity Type']||'').split(',').map(s=>s.trim()), score:parseInt(r['Match Score (0–100)'])||75, description:r['Notes / Intelligence']||'', requirements:(r['Key Requirements']||'').split(',').map(s=>s.trim()), type:r['Grant Type']||'' };
-  }
-
-  Promise.all([
-    fetch(sheetUrl(IDS.investors)).then(r=>r.text()),
-    fetch(sheetUrl(IDS.companies)).then(r=>r.text()),
-    fetch(sheetUrl(IDS.grants)).then(r=>r.text())
-  ]).then(([invText, coText, grText]) => {
-    const invRows = parseSheet(invText);
-    const coRows  = parseSheet(coText);
-    const grRows  = parseSheet(grText);
-    if (invRows && coRows && grRows) {
-      DB.investors = invRows.map(mapInv);
-      DB.companies = coRows.map(mapCo);
-      DB.grants    = grRows.map(mapGr);
-      // Silently re-render current page with live data
-      if (currentPage) navigateTo(currentPage);
-      console.log('✓ Live DB refreshed from Drive');
-    }
-  }).catch(() => {
-    console.log('Live refresh skipped — using embedded DB');
-  });
 }
 
 function logout() {
