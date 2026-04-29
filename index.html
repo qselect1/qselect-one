@@ -4391,6 +4391,54 @@ function readFileAsText(file){return new Promise(function(resolve){var reader=ne
 async function processDocWithClaude(filename,content){var textContent=typeof content==="string"&&content.startsWith("data:")?("[Binary: "+filename+")"):content.slice(0,8000);var prompt="Extract company data from this document and return ONLY a valid JSON object with any keys you find: company_name, sector, stage, location, revenue, revenue_growth, ebitda, gross_margin, runway_months, employees, countries, raise_target, capital_raised, clients (array), description. Return ONLY JSON.\n\nDocument ("+filename+"):\n"+textContent;var resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,messages:[{role:"user",content:prompt}]})});if(!resp.ok)throw new Error("Claude API: "+resp.status);var data=await resp.json();var text=data.content&&data.content[0]?data.content[0].text:null;if(!text)return null;try{return JSON.parse(text.replace(/```json|```/g,"").trim());}catch(e){return null;}}
 function updateCompanyFromExtract(ex){if(!DB.companies||!DB.companies[0])return;var co=DB.companies[0];if(ex.company_name)co.name=ex.company_name;if(ex.sector)co.sector=ex.sector;if(ex.stage)co.stage=ex.stage;if(ex.location)co.location=ex.location;if(ex.revenue)co.revenue=ex.revenue;if(ex.revenue_growth)co.growth=ex.revenue_growth;if(ex.ebitda)co.ebitda=ex.ebitda;if(ex.gross_margin)co.grossMargin=ex.gross_margin;if(ex.runway_months)co.runway=ex.runway_months+" months";if(ex.employees)co.employees=parseInt(ex.employees)||co.employees;if(ex.countries)co.countries=parseInt(ex.countries)||co.countries;if(ex.raise_target)co.raise=ex.raise_target;if(ex.capital_raised)co.capitalRaised=ex.capital_raised;if(ex.clients)co.clients=Array.isArray(ex.clients)?ex.clients:[ex.clients];if(ex.description)co.description=ex.description;localStorage.setItem("qselect_company_data",JSON.stringify(co));console.log("Company updated:",co.name);}
 (function(){var saved=localStorage.getItem("qselect_company_data");if(saved&&DB&&DB.companies&&DB.companies[0]){try{Object.assign(DB.companies[0],JSON.parse(saved));}catch(e){}}})();
+
+// Platform fixes
+var CLAUDE_PROXY = "https://qselect-claude-proxy.247eb9f6.workers.dev";
+async function sendCoChat() {
+  var inp = document.getElementById("co-chat-input");
+  if (!inp || !inp.value.trim()) return;
+  var msg = inp.value; inp.value = "";
+  var hist = document.getElementById("co-chat-history");
+  hist.innerHTML += "<div style='text-align:right;margin-bottom:12px'><div class='msg-bubble msg-sent'>" + msg + "</div></div>";
+  var id = "t" + Date.now();
+  hist.innerHTML += "<div id='" + id + "' style='margin-bottom:12px'><div class='text-muted' style='margin-bottom:4px'>AI Investment Assistant</div><div class='msg-bubble msg-recv' style='color:#6b7280;font-style:italic'>Thinking...</div></div>";
+  hist.scrollTop = hist.scrollHeight;
+  var co = DB.companies[0];
+  var inv = DB.investors.slice(0,3).map(function(i){return i.name;}).join(", ");
+  var grants = DB.grants.slice(0,3).map(function(g){return g.name;}).join(", ");
+  var sys = "You are the AI Investment Assistant for QSelectOne. Company: " + co.name + ". Sector: " + co.sector + ". Stage: " + co.stage + ". Location: " + co.location + ". Revenue: " + co.revenue + " (" + co.growth + " YoY). EBITDA: " + co.ebitda + ". Gross Margin: " + co.grossMargin + ". Runway: " + co.runway + ". Employees: " + co.employees + ". Countries: " + co.countries + ". Target Raise: " + co.raise + ". Raised: " + co.capitalRaised + ". Description: " + co.description + ". Top investors: " + inv + ". Top grants: " + grants + ". Answer concisely and authoritatively using real numbers. Be specific.";
+  try {
+    var resp = await fetch(CLAUDE_PROXY, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,system:sys,messages:[{role:"user",content:msg}]})
+    });
+    if (!resp.ok) throw new Error("Status " + resp.status);
+    var data = await resp.json();
+    var text = data.content && data.content[0] ? data.content[0].text : "No response";
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = "<div class='text-muted' style='margin-bottom:4px'>AI Investment Assistant</div><div class='msg-bubble msg-recv' style='white-space:pre-wrap'>" + text + "</div>";
+  } catch(e) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = "<div class='text-muted' style='margin-bottom:4px'>AI Investment Assistant</div><div class='msg-bubble msg-recv' style='color:#d97706'>AI connecting... Deploy the Cloudflare Worker to enable live responses.</div>";
+  }
+  hist.scrollTop = hist.scrollHeight;
+}
+var _origNavigateTo = navigateTo;
+navigateTo = function(page) {
+  _origNavigateTo(page);
+  if (page === "co-upload") setTimeout(function() {
+    initUploadZone();
+    // Show real upload history from localStorage
+    var hist = JSON.parse(localStorage.getItem("qselect_upload_history") || "[]");
+    if (hist.length > 0) {
+      var histEl = document.querySelector(".upload-history-list");
+      if (histEl) histEl.innerHTML = hist.map(function(f) {
+        return "<div style='display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;margin-bottom:6px'><span style='color:#16a34a'>&#10003;</span><div><div style='font-size:13px;font-weight:600;color:#111'>" + f.name + "</div><div style='font-size:11px;color:#6b7280'>" + f.category + " &bull; " + f.size + " &bull; " + new Date(f.date).toLocaleDateString() + "</div></div></div>";
+      }).join("");
+    }
+  }, 300);
+};
 </script>
 </body>
 </html>
