@@ -2328,6 +2328,121 @@ window.runModa = async function(type) {
   }
 };
 
+
+// GOOGLE DRIVE INTEGRATION
+const GDRIVE_CLIENT_ID = "649820036757-27v6p6grmfb9fd95uqnbeqjs5n21va6v.apps.googleusercontent.com";
+const GDRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
+const GDRIVE_OUTPUTS_FOLDER = "1Coi69dzKUTPZQB-mNgTHsnqeBTFk_Ssz";
+let GDRIVE_TOKEN = localStorage.getItem("gdrive_token") || null;
+let GDRIVE_TOKEN_EXPIRY = parseInt(localStorage.getItem("gdrive_token_expiry") || "0");
+
+function gdriveIsAuthed() {
+  return GDRIVE_TOKEN && Date.now() < GDRIVE_TOKEN_EXPIRY;
+}
+
+function gdriveAuth(callback) {
+  if (gdriveIsAuthed()) { if (callback) callback(GDRIVE_TOKEN); return; }
+  const redirectUri = window.location.origin + window.location.pathname;
+  const authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" +
+    "client_id=" + GDRIVE_CLIENT_ID +
+    "&redirect_uri=" + encodeURIComponent(redirectUri) +
+    "&response_type=token" +
+    "&scope=" + encodeURIComponent(GDRIVE_SCOPES) +
+    "&prompt=select_account";
+  const popup = window.open(authUrl, "gdrive_auth", "width=500,height=600,scrollbars=yes");
+  window._gdriveCallback = callback;
+  const interval = setInterval(function() {
+    try {
+      if (popup.closed) { clearInterval(interval); return; }
+      const hash = popup.location.hash;
+      if (hash && hash.includes("access_token")) {
+        const params = new URLSearchParams(hash.substring(1));
+        const token = params.get("access_token");
+        const expiresIn = parseInt(params.get("expires_in") || "3600");
+        GDRIVE_TOKEN = token;
+        GDRIVE_TOKEN_EXPIRY = Date.now() + (expiresIn * 1000);
+        localStorage.setItem("gdrive_token", token);
+        localStorage.setItem("gdrive_token_expiry", GDRIVE_TOKEN_EXPIRY.toString());
+        popup.close();
+        clearInterval(interval);
+        if (callback) callback(token);
+        if (window._gdriveCallback) { window._gdriveCallback(token); window._gdriveCallback = null; }
+      }
+    } catch(e) {}
+  }, 500);
+}
+
+async function gdriveSaveFile(filename, content, folderId) {
+  if (!gdriveIsAuthed()) {
+    return new Promise(function(resolve) {
+      gdriveAuth(async function(token) { resolve(await gdriveSaveFile(filename, content, folderId)); });
+    });
+  }
+  const metadata = { name: filename, parents: [folderId || GDRIVE_OUTPUTS_FOLDER] };
+  const boundary = "boundary_" + Date.now();
+  const body = "--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" +
+    JSON.stringify(metadata) + "\r\n--" + boundary + "\r\nContent-Type: text/plain\r\n\r\n" +
+    content + "\r\n--" + boundary + "--";
+  const resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + GDRIVE_TOKEN, "Content-Type": "multipart/related; boundary=" + boundary },
+    body: body
+  });
+  return resp.json();
+}
+
+async function gdriveSaveModaOutput(type, canvasUrl, companyName) {
+  const label = type === "pitch_deck" ? "Pitch Deck" : "One Pager";
+  const date = new Date().toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"});
+  const content = "QSelectOne - " + label + "\n" +
+    "Company: " + companyName + "\n" +
+    "Generated: " + date + "\n" +
+    "MODA Canvas: " + canvasUrl + "\n" +
+    "PDF Export: " + canvasUrl + "\n\n" +
+    "Open in MODA to download as PowerPoint or PDF.";
+  const filename = companyName.replace(/[^a-zA-Z0-9]/g,"_") + "_" + label.replace(" ","_") + "_" + new Date().toISOString().slice(0,10) + ".txt";
+  try {
+    const result = await gdriveSaveFile(filename, content, GDRIVE_OUTPUTS_FOLDER);
+    console.log("Saved to Drive:", result.id, filename);
+    return result;
+  } catch(e) {
+    console.warn("Drive save failed:", e.message);
+    return null;
+  }
+}
+
+// Show Drive connect status in the platform
+function showDriveStatus() {
+  const existing = document.getElementById("drive-status-bar");
+  if (existing) existing.remove();
+  const bar = document.createElement("div");
+  bar.id = "drive-status-bar";
+  const authed = gdriveIsAuthed();
+  bar.style.cssText = "position:fixed;bottom:16px;right:16px;z-index:8888;background:" + (authed?"#f0fdf4":"#fff7ed") + ";border:1px solid " + (authed?"#86efac":"#fed7aa") + ";border-radius:10px;padding:10px 14px;font-size:12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)";
+  bar.innerHTML = (authed ?
+    "<span style='color:#16a34a'>&#10003; Drive connected</span>" :
+    "<span style='color:#d97706'>Drive not connected &mdash;</span><button onclick='gdriveAuth(showDriveStatus)' style='padding:4px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer'>Connect</button>");
+  document.body.appendChild(bar);
+  setTimeout(function(){ if(authed && bar.parentNode) bar.remove(); }, 3000);
+}
+
+// Check for OAuth redirect token on page load
+(function() {
+  const hash = window.location.hash;
+  if (hash && hash.includes("access_token")) {
+    const params = new URLSearchParams(hash.substring(1));
+    const token = params.get("access_token");
+    const expiresIn = parseInt(params.get("expires_in") || "3600");
+    if (token) {
+      GDRIVE_TOKEN = token;
+      GDRIVE_TOKEN_EXPIRY = Date.now() + (expiresIn * 1000);
+      localStorage.setItem("gdrive_token", token);
+      localStorage.setItem("gdrive_token_expiry", GDRIVE_TOKEN_EXPIRY.toString());
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+})();
+
 </script>
 </body>
 </html>
