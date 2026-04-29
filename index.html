@@ -2271,6 +2271,63 @@ async function modaPoll(id,cb){for(let i=0;i<60;i++){await new Promise(function(
 function showModaModal(type){const label=type==="pitch_deck"?"Pitch Deck":"One Pager";const co=DB.companies[0];const ex=document.getElementById("moda-modal");if(ex)ex.remove();const m=document.createElement("div");m.id="moda-modal";m.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px";m.innerHTML='<div style="background:#fff;border-radius:16px;padding:32px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)"><div style="display:flex;align-items:center;gap:12px;margin-bottom:24px"><div style="width:48px;height:48px;background:#1B3A6B;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">✨</div><div><h2 style="margin:0;font-size:18px;color:#111">Generate '+label+'</h2><p style="margin:0;font-size:13px;color:#6b7280">Powered by MODA AI Design</p></div></div><div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px"><div style="font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:4px;text-transform:uppercase">Company</div><div style="font-size:15px;font-weight:700;color:#111">'+co.name+'</div><div style="font-size:13px;color:#6b7280">'+co.sector+' · '+co.stage+' · '+co.revenue+'</div></div><div style="margin-bottom:20px"><div id="moda-st" style="font-size:13px;color:#374151;margin-bottom:8px">Ready to generate.</div><div style="height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div id="moda-pb" style="height:100%;width:0%;background:linear-gradient(90deg,#1B3A6B,#2563a8);border-radius:99px;transition:width .4s"></div></div></div><div id="moda-dl" style="display:none;margin-bottom:16px"></div><div style="display:flex;gap:8px"><button id="moda-btn" class="btn btn-blue" style="flex:1" onclick="runModa(''+type+'')">✨ Generate '+label+'</button><button class="btn btn-outline" onclick="document.getElementById('moda-modal').remove()">Cancel</button></div></div>';document.body.appendChild(m);}
 async function runModa(type){const btn=document.getElementById("moda-btn"),st=document.getElementById("moda-st"),pb=document.getElementById("moda-pb"),dl=document.getElementById("moda-dl"),label=type==="pitch_deck"?"Pitch Deck":"One Pager";btn.disabled=true;btn.textContent="Generating...";try{st.textContent="Starting MODA AI task...";pb.style.width="10%";const task=await modaStart(buildModaPrompt(type));const id=task.id||task.task_id;st.textContent="MODA is building your "+label+"...";const done=await modaPoll(id,function(s,p){st.textContent="Building... "+Math.round(p)+"%";pb.style.width=p+"%";});const url="https://moda.app/canvas/"+(done.canvas_id||done.id);pb.style.width="100%";st.textContent="✅ Done! Your "+label+" is ready.";dl.style.display="block";dl.innerHTML='<div style="font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:8px;text-transform:uppercase">Download</div><div style="display:flex;gap:8px"><a href="'+url+'" target="_blank" style="padding:9px 16px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">🔗 Open in MODA</a></div>';btn.textContent="✨ Generate Again";btn.disabled=false;}catch(e){st.textContent="❌ "+e.message;pb.style.background="#ef4444";btn.disabled=false;btn.textContent="Retry";}}
 
+
+const MODA_OUTPUTS_KEY = 'qselect_moda_outputs';
+function saveModaOutput(type, canvasId, canvasUrl, companyName) {
+  const outputs = JSON.parse(localStorage.getItem(MODA_OUTPUTS_KEY) || '[]');
+  const output = { id: canvasId, type: type, url: canvasUrl, company: companyName, label: type === 'pitch_deck' ? 'Pitch Deck' : 'One Pager', created: new Date().toISOString() };
+  outputs.unshift(output);
+  if (outputs.length > 20) outputs.pop();
+  localStorage.setItem(MODA_OUTPUTS_KEY, JSON.stringify(outputs));
+  return output;
+}
+function getModaOutputs(type) {
+  const outputs = JSON.parse(localStorage.getItem(MODA_OUTPUTS_KEY) || '[]');
+  return type ? outputs.filter(function(o){ return o.type === type; }) : outputs;
+}
+function renderSavedOutputs(containerId, type) {
+  const outputs = getModaOutputs(type);
+  const el = document.getElementById(containerId);
+  if (!el || outputs.length === 0) return;
+  el.innerHTML = '<div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:8px;text-transform:uppercase">Previously Generated</div>' +
+    outputs.map(function(o) {
+      const date = new Date(o.created).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:1px solid #e5e7eb">' +
+        '<div><div style="font-size:13px;font-weight:600;color:#111">'+o.company+' - '+o.label+'</div><div style="font-size:11px;color:#9ca3af;margin-top:2px">'+date+'</div></div>' +
+        '<a href="'+o.url+'" target="_blank" style="padding:5px 10px;background:#1B3A6B;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600">Open</a></div>';
+    }).join('');
+}
+// Also update runModa to save outputs
+const _origRunModa = window.runModa;
+window.runModa = async function(type) {
+  const btn=document.getElementById("moda-btn"),st=document.getElementById("moda-st"),pb=document.getElementById("moda-pb"),dl=document.getElementById("moda-dl");
+  const label=type==="pitch_deck"?"Pitch Deck":"One Pager";
+  btn.disabled=true;btn.textContent="Generating...";
+  try{
+    st.textContent="Starting MODA AI design task...";pb.style.width="10%";
+    const task=await modaStart(buildModaPrompt(type));
+    const taskId=task.id||task.task_id||task.job_id;
+    st.textContent="MODA is designing your "+label+"...";
+    const done=await modaPoll(taskId,function(s,p){st.textContent="Building... "+Math.round(p)+"%";pb.style.width=p+"%";});
+    const canvasId=done.canvas_id;const canvasUrl=done.canvas_url||("https://moda.app/canvas/"+canvasId);
+    pb.style.width="100%";st.textContent="Done! Saved to your platform.";
+    const co=DB.companies[0];
+    saveModaOutput(type,canvasId,canvasUrl,co.name);
+    dl.style.display="block";
+    dl.innerHTML='<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:12px"><div style="font-size:12px;color:#16a34a;font-weight:600;margin-bottom:8px">Saved to platform</div><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="'+canvasUrl+'" target="_blank" style="padding:8px 14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">Open in MODA</a><a href="'+canvasUrl+'" target="_blank" style="padding:8px 14px;background:#2563a8;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">PDF</a><a href="'+canvasUrl+'" target="_blank" style="padding:8px 14px;background:#374151;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">PPTX</a></div></div>';
+    btn.textContent="Generate New";btn.disabled=false;
+    let ss=document.getElementById("moda-saved-section");
+    if(!ss){const modal=document.querySelector("#moda-modal > div");if(modal){ss=document.createElement("div");ss.id="moda-saved-section";ss.style.cssText="border-top:1px solid #e5e7eb;padding-top:16px;margin-top:8px";modal.appendChild(ss);}}
+    renderSavedOutputs("moda-saved-section",type);
+  }catch(e){
+    const isT=e.message.includes("Timeout");
+    st.textContent=isT?"Still generating — check moda.app":"Error: "+e.message;
+    pb.style.background=isT?"#f59e0b":"#ef4444";
+    dl.style.display="block";dl.innerHTML='<a href="https://moda.app" target="_blank" style="padding:8px 14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">Check MODA</a>';
+    btn.disabled=false;btn.textContent="Retry";
+  }
+};
+
 </script>
 </body>
 </html>
