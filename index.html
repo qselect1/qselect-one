@@ -2255,6 +2255,132 @@ function sendInvChat() {
 
 // Company directory for investor
 pageRenderers['inv-company-directory'] = () => pageRenderers['inv-search']();
+
+
+// MODA + DRIVE INTEGRATION
+var MODA_KEY = "moda_live_51037d146628e67db545ff864c69ea91984e3314b986b2cbf0afe8a076ba638a";
+var MODA_BASE = "https://api.moda.app/v1";
+var GDRIVE_CLIENT = "649820036757-27v6p6grmfb9fd95uqnbeqjs5n21va6v.apps.googleusercontent.com";
+var GDRIVE_FOLDER = "1Coi69dzKUTPZQB-mNgTHsnqeBTFk_Ssz";
+var MODA_SAVES = "qselect_moda_saves";
+var _driveToken = localStorage.getItem("gdrive_token");
+var _driveExpiry = parseInt(localStorage.getItem("gdrive_token_expiry") || "0");
+function driveAuthed() { return !!(_driveToken && Date.now() < _driveExpiry); }
+function driveConnect(cb) {
+  if (driveAuthed()) { if (cb) cb(_driveToken); return; }
+  var uri = "https://qselect1.github.io/qselect-one/";
+  var url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=" + GDRIVE_CLIENT + "&redirect_uri=" + encodeURIComponent(uri) + "&response_type=token&scope=" + encodeURIComponent("https://www.googleapis.com/auth/drive.file") + "&prompt=select_account";
+  var popup = window.open(url, "gdrive_auth", "width=500,height=600");
+  if (!popup) { alert("Please allow popups for qselect1.github.io"); return; }
+  var iv = setInterval(function() {
+    try {
+      if (popup.closed) { clearInterval(iv); return; }
+      var h = popup.location.hash;
+      if (h && h.includes("access_token")) {
+        var p = new URLSearchParams(h.slice(1));
+        _driveToken = p.get("access_token");
+        _driveExpiry = Date.now() + parseInt(p.get("expires_in") || "3600") * 1000;
+        localStorage.setItem("gdrive_token", _driveToken);
+        localStorage.setItem("gdrive_token_expiry", String(_driveExpiry));
+        popup.close(); clearInterval(iv);
+        if (cb) cb(_driveToken);
+        showDriveBar();
+      }
+    } catch(e) {}
+  }, 500);
+}
+function showDriveBar() {
+  var b = document.getElementById("drive-bar");
+  if (!b) { b = document.createElement("div"); b.id = "drive-bar"; b.style.cssText = "position:fixed;bottom:16px;right:16px;z-index:9000;border-radius:10px;padding:10px 16px;font-size:12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.15)"; document.body.appendChild(b); }
+  if (driveAuthed()) {
+    b.style.cssText += ";background:#f0fdf4;border:1px solid #86efac";
+    b.innerHTML = "<span style=color:#16a34a;font-weight:600>Drive Connected</span>";
+    setTimeout(function(){ if(b.parentNode) b.remove(); }, 2000);
+  } else {
+    b.style.cssText += ";background:#fff7ed;border:1px solid #fed7aa";
+    b.innerHTML = "<span style=color:#d97706;font-weight:600>Drive not connected</span><button onclick=driveConnect(showDriveBar) style=padding:4px_10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer>Connect</button>";
+  }
+}
+async function driveSave(name, content) {
+  if (!driveAuthed()) return null;
+  var bd = "b" + Date.now();
+  var body = "--" + bd + "\r\nContent-Type: application/json\r\n\r\n" + JSON.stringify({name: name, parents: [GDRIVE_FOLDER]}) + "\r\n--" + bd + "\r\nContent-Type: text/plain\r\n\r\n" + content + "\r\n--" + bd + "--";
+  var r = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Authorization": "Bearer " + _driveToken, "Content-Type": "multipart/related; boundary=" + bd }, body: body });
+  return r.ok ? r.json() : null;
+}
+function getModaSaves(type) { var s = JSON.parse(localStorage.getItem(MODA_SAVES) || "[]"); return type ? s.filter(function(x){ return x.type===type; }) : s; }
+function addModaSave(type, url, co) { var s = JSON.parse(localStorage.getItem(MODA_SAVES) || "[]"); s.unshift({type:type,url:url,company:co,date:new Date().toISOString()}); if(s.length>20)s.pop(); localStorage.setItem(MODA_SAVES, JSON.stringify(s)); }
+function showModaModal(type) {
+  var label = type==="pitch_deck" ? "Pitch Deck" : "One Pager";
+  var co = DB.companies[0];
+  var ex = document.getElementById("moda-modal"); if(ex) ex.remove();
+  var saves = getModaSaves(type);
+  var savedHtml = "";
+  if (saves.length > 0) {
+    savedHtml = "<div style=border-top:1px_solid_#e5e7eb;margin-top:16px;padding-top:16px><div style=font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:8px;text-transform:uppercase>Previously Generated</div>" + saves.map(function(s){ var d=new Date(s.date).toLocaleDateString("en-GB"); return "<div style=display:flex;align-items:center;justify-content:space-between;padding:8px_12px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:1px_solid_#e5e7eb><div style=font-size:12px;font-weight:600;color:#111>" + s.company + " - " + (s.type==="pitch_deck"?"Pitch Deck":"One Pager") + " <span style=font-size:10px;color:#9ca3af>" + d + "</span></div><a href=" + s.url + " target=_blank style=padding:4px_10px;background:#1B3A6B;color:#fff;border-radius:6px;text-decoration:none;font-size:11px;font-weight:600>Open</a></div>"; }).join("") + "</div>";
+  }
+  var m = document.createElement("div"); m.id = "moda-modal";
+  m.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto";
+  m.innerHTML = "<div style=background:#fff;border-radius:16px;padding:32px;max-width:500px;width:100%;box-shadow:0_20px_60px_rgba(0,0,0,.3);margin:auto><div style=display:flex;align-items:center;gap:12px;margin-bottom:24px><div style=width:48px;height:48px;background:#1B3A6B;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px>*</div><div><h2 style=margin:0;font-size:18px;color:#111>Generate " + label + "</h2><p style=margin:0;font-size:13px;color:#6b7280>Powered by MODA AI Design</p></div></div><div style=background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px><div style=font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:4px>COMPANY</div><div style=font-size:15px;font-weight:700;color:#111>" + co.name + "</div><div style=font-size:13px;color:#6b7280>" + co.sector + " - " + co.stage + " - " + co.revenue + "</div></div><div style=margin-bottom:20px><div id=moda-st style=font-size:13px;color:#374151;margin-bottom:8px>Ready to generate.</div><div style=height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden><div id=moda-pb style=height:100%;width:0%;background:linear-gradient(90deg,#1B3A6B,#2563a8);border-radius:99px;transition:width_.4s></div></div></div><div id=moda-dl style=display:none;margin-bottom:16px></div><div style=display:flex;gap:8px><button id=moda-btn class=btn_btn-blue style=flex:1 onclick=runModa(\"" + type + "\")>Generate " + label + "</button><button class=btn_btn-outline onclick=document.getElementById(\"moda-modal\").remove()>Cancel</button></div>" + savedHtml + "</div>";
+  document.body.appendChild(m);
+}
+function buildModaPrompt(type) {
+  var c = DB.companies[0];
+  var inv = DB.investors.slice(0,5).map(function(i){ return i.name; }).join(", ");
+  if (type === "pitch_deck") return "Create a premium 10-slide investor pitch deck for " + c.name + ". " + c.sector + ", " + c.stage + ", " + c.location + ". " + c.description + " Revenue: " + c.revenue + " " + c.growth + " YoY. EBITDA: " + c.ebitda + ". Gross Margin: " + c.grossMargin + ". Runway: " + c.runway + ". Team: " + c.employees + " in " + c.countries + " countries. Raise: " + c.raise + " (raised " + c.capitalRaised + "). Clients: " + (c.clients ? c.clients.join(", ") : "N/A") + ". Top investors: " + inv + ". DESIGN: Premium dark mode. Deep navy #0A1628 backgrounds. Electric blue #2563A8 accents. Bold white typography. One dominant visual per slide. Max 3 bullets. Large bold metric numbers. Line chart for revenue growth. Donut chart for use of funds. McKinsey quality for DFI and impact investors. SLIDES: Cover, Problem, Solution, Market, Product, Traction and Financials, Business Model, Team, Use of Funds, CTA.";
+  return "Create a premium investor one-pager for " + c.name + ". " + c.sector + ", " + c.stage + ", " + c.location + ". " + c.description + " Revenue: " + c.revenue + " " + c.growth + " YoY. EBITDA: " + c.ebitda + ". Runway: " + c.runway + ". Raise: " + c.raise + ". Clients: " + (c.clients ? c.clients.join(", ") : "N/A") + ". Top investors: " + inv + ". DESIGN: Premium dark mode. Deep navy background. Electric blue accents. A4 landscape. 4 large bold metrics. Company overview. 3 investment highlights. Use of funds chart. Top 3 investors. Contact details.";
+}
+async function runModa(type) {
+  var btn=document.getElementById("moda-btn"),st=document.getElementById("moda-st"),pb=document.getElementById("moda-pb"),dl=document.getElementById("moda-dl");
+  var label = type==="pitch_deck" ? "Pitch Deck" : "One Pager";
+  btn.disabled=true; btn.textContent="Generating...";
+  try {
+    st.textContent="Starting MODA AI task..."; pb.style.width="10%";
+    var r1 = await fetch(MODA_BASE+"/tasks", {method:"POST",headers:{"Authorization":"Bearer "+MODA_KEY,"Content-Type":"application/json"},body:JSON.stringify({prompt:buildModaPrompt(type)})});
+    if (!r1.ok) throw new Error("Start failed: "+r1.status);
+    var t1 = await r1.json();
+    var taskId = t1.id || t1.task_id || t1.job_id;
+    st.textContent = "MODA is designing your " + label + "...";
+    var canvasUrl = null;
+    for (var i=0; i<90; i++) {
+      await new Promise(function(res){setTimeout(res,5000);});
+      var r2 = await fetch(MODA_BASE+"/tasks/"+taskId,{headers:{"Authorization":"Bearer "+MODA_KEY}});
+      var d2 = await r2.json();
+      var job = (d2.jobs && d2.jobs[0]) ? d2.jobs[0] : d2;
+      var status = job.status || d2.status || "running";
+      pb.style.width = Math.min(88, 10+i*78/90) + "%";
+      st.textContent = "Building... " + Math.round(Math.min(88,10+i*78/90)) + "%";
+      if (status==="completed") { canvasUrl = job.canvas_url || ("https://moda.app/canvas/"+(job.canvas_id||d2.canvas_id)); break; }
+      if (status==="failed") throw new Error("MODA task failed");
+    }
+    if (!canvasUrl) throw new Error("Timeout - check moda.app");
+    pb.style.width="100%"; st.textContent="Done! Saved to platform.";
+    var co = DB.companies[0];
+    addModaSave(type, canvasUrl, co.name);
+    dl.style.display="block";
+    dl.innerHTML = "<div style=background:#f0fdf4;border:1px_solid_#86efac;border-radius:10px;padding:14px;margin-bottom:12px><div style=font-size:12px;color:#16a34a;font-weight:600;margin-bottom:8px>Saved to platform</div><div style=display:flex;gap:8px;flex-wrap:wrap><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>Open in MODA</a><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#2563a8;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>PDF</a><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#374151;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>PPTX</a></div></div>";
+    btn.textContent="Generate New"; btn.disabled=false;
+    if (driveAuthed()) {
+      var date = new Date().toISOString().slice(0,10);
+      var fname = co.name.replace(/[^a-zA-Z0-9]/g,"_") + "_" + label.replace(" ","_") + "_" + date + ".txt";
+      driveSave(fname, "QSelectOne\nCompany: "+co.name+"\nType: "+label+"\nDate: "+date+"\nCanvas: "+canvasUrl);
+    }
+  } catch(e) {
+    st.textContent = e.message.includes("Timeout") ? "Still generating - check moda.app" : "Error: "+e.message;
+    pb.style.background = e.message.includes("Timeout") ? "#f59e0b" : "#ef4444";
+    dl.style.display="block"; dl.innerHTML="<a href=https://moda.app target=_blank style=padding:8px_14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>Check MODA</a>";
+    btn.disabled=false; btn.textContent="Retry";
+  }
+}
+// Show Drive bar after login
+(function() {
+  var h = window.location.hash;
+  if (h && h.includes("access_token")) {
+    var p = new URLSearchParams(h.slice(1));
+    var t = p.get("access_token");
+    if (t) { _driveToken=t; _driveExpiry=Date.now()+parseInt(p.get("expires_in")||"3600")*1000; localStorage.setItem("gdrive_token",t); localStorage.setItem("gdrive_token_expiry",String(_driveExpiry)); window.history.replaceState({},"",window.location.pathname); }
+  }
+})();
 </script>
 </body>
 </html>
