@@ -730,8 +730,8 @@ pageRenderers['co-pitchdeck'] = () => `
   <div class="flex justify-between items-center flex-wrap gap-8">
     <div><h3>AI Generated Pitch Deck</h3><div class="text-muted" style="margin-top:4px">Pitch deck automatically generated from Company profile, financials, and uploaded documents.</div></div>
     <div class="btn-group">
-      <button class="btn btn-blue btn-sm">🔄 Regenerate Deck</button>
-      <button class="btn btn-outline btn-sm">✏️ Edit Slides</button>
+      <button class="btn btn-blue btn-sm" onclick="showModaModal('pitch_deck')">🔄 Regenerate Deck</button>
+      <button class="btn btn-outline btn-sm" onclick="showModaModal('one_pager')">✨ One Pager</button><button class="btn btn-outline btn-sm">✏️ Edit Slides</button>
       <button class="btn btn-outline btn-sm">📤 Export PDF</button>
       <button class="btn btn-outline btn-sm">↗ Share With Investors</button>
     </div>
