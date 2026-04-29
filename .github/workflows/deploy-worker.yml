@@ -1,0 +1,22 @@
+name: Deploy Cloudflare Worker
+on:
+  push:
+    paths:
+      - 'worker.js'
+      - 'wrangler.toml'
+      - '.github/workflows/deploy-worker.yml'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Worker
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: 247eb9f6b45b2e42613b854d17378d5e
+          secrets: |
+            ANTHROPIC_KEY
+        env:
+          ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_KEY }}
