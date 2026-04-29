@@ -840,9 +840,9 @@ pageRenderers['co-upload'] = () => `
       <table>
         <thead><tr><th>File Name</th><th>Source</th><th>Type</th><th>Uploaded</th><th>Size</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td><div class="flex items-center gap-8"><div class="file-icon file-pdf" style="width:24px;height:24px;font-size:12px">📄</div>Pitch_Deck_v3.pdf</div></td><td>📁 Google Drive</td><td>PDF</td><td>12 Mar 2026</td><td>8.4 MB</td><td><span class="tag tag-green">Processed</span></td></tr>
+          <tr><td><div class="flex items-center gap-8"><div class="file-icon file-pdf" style="width:24px;height:24px;font-size:12px">📄</div>Pitch_Deck_v3.pdf</div></td><td>📁 Google Drive</td><td>Download PDF</td><td>12 Mar 2026</td><td>8.4 MB</td><td><span class="tag tag-green">Processed</span></td></tr>
           <tr><td><div class="flex items-center gap-8"><div class="file-icon file-xlsx" style="width:24px;height:24px;font-size:12px">📊</div>Financial_Model.xlsx</div></td><td>Manual Upload</td><td>Excel</td><td>11 Mar 2026</td><td>5.2 MB</td><td><span class="tag tag-green">Processed</span></td></tr>
-          <tr><td><div class="flex items-center gap-8"><div class="file-icon file-pdf" style="width:24px;height:24px;font-size:12px">📄</div>Market_Research.pdf</div></td><td>📦 Dropbox</td><td>PDF</td><td>10 Mar 2026</td><td>12 MB</td><td><span class="tag tag-orange">Processing…</span></td></tr>
+          <tr><td><div class="flex items-center gap-8"><div class="file-icon file-pdf" style="width:24px;height:24px;font-size:12px">📄</div>Market_Research.pdf</div></td><td>📦 Dropbox</td><td>Download PDF</td><td>10 Mar 2026</td><td>12 MB</td><td><span class="tag tag-orange">Processing…</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -2259,7 +2259,7 @@ pageRenderers['inv-company-directory'] = () => pageRenderers['inv-search']();
 
 // MODA + DRIVE INTEGRATION
 var MODA_KEY = "moda_live_51037d146628e67db545ff864c69ea91984e3314b986b2cbf0afe8a076ba638a";
-var MODA_BASE = "https://api.moda.app/v1";
+var MODA_BASE = "https://api.qselect1.github.io/qselect-one/v1";
 var GDRIVE_CLIENT = "649820036757-27v6p6grmfb9fd95uqnbeqjs5n21va6v.apps.googleusercontent.com";
 var GDRIVE_FOLDER = "1Coi69dzKUTPZQB-mNgTHsnqeBTFk_Ssz";
 var MODA_SAVES = "qselect_moda_saves";
@@ -2321,7 +2321,7 @@ function showModaModal(type) {
   }
   var m = document.createElement("div"); m.id = "moda-modal";
   m.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto";
-  m.innerHTML = "<div style=background:#fff;border-radius:16px;padding:32px;max-width:500px;width:100%;box-shadow:0_20px_60px_rgba(0,0,0,.3);margin:auto><div style=display:flex;align-items:center;gap:12px;margin-bottom:24px><div style=width:48px;height:48px;background:#1B3A6B;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px>*</div><div><h2 style=margin:0;font-size:18px;color:#111>Generate " + label + "</h2><p style=margin:0;font-size:13px;color:#6b7280>Powered by MODA AI Design</p></div></div><div style=background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px><div style=font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:4px>COMPANY</div><div style=font-size:15px;font-weight:700;color:#111>" + co.name + "</div><div style=font-size:13px;color:#6b7280>" + co.sector + " - " + co.stage + " - " + co.revenue + "</div></div><div style=margin-bottom:20px><div id=moda-st style=font-size:13px;color:#374151;margin-bottom:8px>Ready to generate.</div><div style=height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden><div id=moda-pb style=height:100%;width:0%;background:linear-gradient(90deg,#1B3A6B,#2563a8);border-radius:99px;transition:width_.4s></div></div></div><div id=moda-dl style=display:none;margin-bottom:16px></div><div style=display:flex;gap:8px><button id=moda-btn class=btn_btn-blue style=flex:1 onclick=runModa(\"" + type + "\")>Generate " + label + "</button><button class=btn_btn-outline onclick=document.getElementById(\"moda-modal\").remove()>Cancel</button></div>" + savedHtml + "</div>";
+  m.innerHTML = "<div style=background:#fff;border-radius:16px;padding:32px;max-width:500px;width:100%;box-shadow:0_20px_60px_rgba(0,0,0,.3);margin:auto><div style=display:flex;align-items:center;gap:12px;margin-bottom:24px><div style=width:48px;height:48px;background:#1B3A6B;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px>Q</div><div><h2 style=margin:0;font-size:18px;color:#111>Generate " + label + "</h2><p style=margin:0;font-size:13px;color:#6b7280>Powered by QSelectOne AI</p></div></div><div style=background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px><div style=font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:4px>COMPANY</div><div style=font-size:15px;font-weight:700;color:#111>" + co.name + "</div><div style=font-size:13px;color:#6b7280>" + co.sector + " - " + co.stage + " - " + co.revenue + "</div></div><div style=margin-bottom:20px><div id=moda-st style=font-size:13px;color:#374151;margin-bottom:8px>Ready to generate.</div><div style=height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden><div id=moda-pb style=height:100%;width:0%;background:linear-gradient(90deg,#1B3A6B,#2563a8);border-radius:99px;transition:width_.4s></div></div></div><div id=moda-dl style=display:none;margin-bottom:16px></div><div style=display:flex;gap:8px><button id=moda-btn class=btn_btn-blue style=flex:1 onclick=runModa(\"" + type + "\")>Generate " + label + "</button><button class=btn_btn-outline onclick=document.getElementById(\"moda-modal\").remove()>Cancel</button></div>" + savedHtml + "</div>";
   document.body.appendChild(m);
 }
 function buildModaPrompt(type) {
@@ -2340,7 +2340,7 @@ async function runModa(type) {
     if (!r1.ok) throw new Error("Start failed: "+r1.status);
     var t1 = await r1.json();
     var taskId = t1.id || t1.task_id || t1.job_id;
-    st.textContent = "MODA is designing your " + label + "...";
+    st.textContent = "AI is designing your " + label + "...";
     var canvasUrl = null;
     for (var i=0; i<90; i++) {
       await new Promise(function(res){setTimeout(res,5000);});
@@ -2350,15 +2350,15 @@ async function runModa(type) {
       var status = job.status || d2.status || "running";
       pb.style.width = Math.min(88, 10+i*78/90) + "%";
       st.textContent = "Building... " + Math.round(Math.min(88,10+i*78/90)) + "%";
-      if (status==="completed") { canvasUrl = job.canvas_url || ("https://moda.app/canvas/"+(job.canvas_id||d2.canvas_id)); break; }
+      if (status==="completed") { canvasUrl = job.canvas_url || ("https://qselect1.github.io/qselect-one/canvas/"+(job.canvas_id||d2.canvas_id)); break; }
       if (status==="failed") throw new Error("MODA task failed");
     }
-    if (!canvasUrl) throw new Error("Timeout - check moda.app");
-    pb.style.width="100%"; st.textContent="Done! Saved to platform.";
+    if (!canvasUrl) throw new Error("Timeout - check qselect1.github.io/qselect-one");
+    pb.style.width="100%"; st.textContent="Done! Saved to QSelectOne.";
     var co = DB.companies[0];
     addModaSave(type, canvasUrl, co.name);
     dl.style.display="block";
-    dl.innerHTML = "<div style=background:#f0fdf4;border:1px_solid_#86efac;border-radius:10px;padding:14px;margin-bottom:12px><div style=font-size:12px;color:#16a34a;font-weight:600;margin-bottom:8px>Saved to platform</div><div style=display:flex;gap:8px;flex-wrap:wrap><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>Open in MODA</a><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#2563a8;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>PDF</a><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#374151;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>PPTX</a></div></div>";
+    dl.innerHTML = "<div style=background:#f0fdf4;border:1px_solid_#86efac;border-radius:10px;padding:14px;margin-bottom:12px><div style=font-size:12px;color:#16a34a;font-weight:600;margin-bottom:8px>Saved to QSelectOne</div><div style=display:flex;gap:8px;flex-wrap:wrap><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>View Presentation</a><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#2563a8;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>Download PDF</a><a href=" + canvasUrl + " target=_blank style=padding:8px_14px;background:#374151;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>Download PowerPoint</a></div></div>";
     btn.textContent="Generate New"; btn.disabled=false;
     if (driveAuthed()) {
       var date = new Date().toISOString().slice(0,10);
@@ -2366,9 +2366,9 @@ async function runModa(type) {
       driveSave(fname, "QSelectOne\nCompany: "+co.name+"\nType: "+label+"\nDate: "+date+"\nCanvas: "+canvasUrl);
     }
   } catch(e) {
-    st.textContent = e.message.includes("Timeout") ? "Still generating - check moda.app" : "Error: "+e.message;
+    st.textContent = e.message.includes("Timeout") ? "Still generating - check qselect1.github.io/qselect-one" : "Error: "+e.message;
     pb.style.background = e.message.includes("Timeout") ? "#f59e0b" : "#ef4444";
-    dl.style.display="block"; dl.innerHTML="<a href=https://moda.app target=_blank style=padding:8px_14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>Check MODA</a>";
+    dl.style.display="block"; dl.innerHTML="<a href=https://qselect1.github.io/qselect-one target=_blank style=padding:8px_14px;background:#1B3A6B;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600>View Presentation</a>";
     btn.disabled=false; btn.textContent="Retry";
   }
 }
